@@ -20,18 +20,35 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
         st.info("Insufficient records for the selected months to draw a comparison.")
         return
 
-    left, right = st.columns(2)
-    left.plotly_chart(dep_fig, width="stretch")
-    right.plotly_chart(arr_fig, width="stretch")
-    st.caption(
-        f"Derived from {meta['records']:,} flights across {meta['days']} observed days."
+    left_col, right_col = st.columns((1.5, 1.2))
+    dep_fig.update_layout(
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=0.85,
+            xanchor="right",
+            x=0.98,
+            bgcolor="rgba(255, 255, 255, 0.6)",
+            borderwidth=0,
+        )
     )
+    arr_fig.update_layout(showlegend=False)
+
+    with left_col:
+        st.plotly_chart(dep_fig, use_container_width=True)
+        st.plotly_chart(arr_fig, use_container_width=True)
+        st.caption(
+            f"Derived from {meta['records']:,} flights across {meta['days']} observed days."
+        )
+
+    with right_col:
+        _render_airline_delay_range(df)
 
 
 def create_delay_map(
     df: pd.DataFrame,
     airports_us: pd.DataFrame,
-    marker_multiplier: int = 450,
+    marker_multiplier: int = 1500,
 ) -> go.Figure:
     """Build a geospatial view comparing weather vs non-weather delays."""
 
@@ -110,7 +127,7 @@ def create_delay_map(
             marker=dict(
                 size=w_size_tot,
                 color="#F4A261",
-                opacity=0.55,
+                opacity=0.85,
                 sizemode="area",
                 line_width=0.4,
                 line_color="#6D6875",
@@ -130,7 +147,7 @@ def create_delay_map(
             marker=dict(
                 size=o_size_tot,
                 color="#87A8A4",
-                opacity=0.55,
+                opacity=0.85,
                 sizemode="area",
                 line_width=0.4,
                 line_color="#6D6875",
@@ -272,3 +289,56 @@ def create_delay_period_comparison(
         "records": len(filtered),
         "days": daily["day_of_month"].nunique(),
     }
+
+
+def _render_airline_delay_range(df: pd.DataFrame) -> None:
+    """Plot min/max departure delay per airline."""
+
+    delay_range = _build_airline_delay_range(df)
+    if delay_range.empty:
+        st.info("Not enough delay data to chart airline ranges.")
+        return
+
+    traces = []
+    for _, row in delay_range.iterrows():
+        traces.append(
+            go.Scatter(
+                x=[row["min"], row["max"]],
+                y=[row["Airline_Name"], row["Airline_Name"]],
+                mode="lines+markers",
+                name=row["Airline_Name"],
+                line=dict(width=2),
+                marker=dict(size=8, symbol="circle"),
+                hovertemplate="<b>Airline</b>: %{y}<br><b>Min Delay</b>: %{x[0]:.1f} min<br><b>Max Delay</b>: %{x[1]:.1f} min<extra></extra>",
+            )
+        )
+
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        title="Min and Max Departure Delays per Airline",
+        xaxis_title="Departure delay (minutes)",
+        yaxis_title="Airline",
+        showlegend=False,
+        height=len(delay_range) * 25 + 200,
+        margin=dict(l=80, r=20, t=50, b=20),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _build_airline_delay_range(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute min and max departure delay per airline sorted by max delay."""
+
+    if df.empty or "DEP_DELAY" not in df.columns:
+        return pd.DataFrame()
+
+    work_df = df[["Airline_Name", "DEP_DELAY"]].dropna()
+    if work_df.empty:
+        return pd.DataFrame()
+
+    summary = (
+        work_df.groupby("Airline_Name")["DEP_DELAY"]
+        .agg(["min", "max"])
+        .reset_index()
+        .sort_values("max", ascending=False)
+    )
+    return summary

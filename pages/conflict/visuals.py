@@ -2,21 +2,33 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Sequence, Tuple
 
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 import streamlit as st
 
 
 def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
     """Render the Conflict page visuals in Streamlit."""
 
-    st.plotly_chart(create_delay_map(df, airports_us),
-                    use_container_width=True)
+    st.plotly_chart(create_delay_map(df, airports_us), width="stretch")
+    dep_fig, arr_fig, meta = create_delay_period_comparison(df)
+    st.subheader("Daily Average Delays: August 2018 vs January 2020")
+    if dep_fig is None or arr_fig is None:
+        st.info("Insufficient records for the selected months to draw a comparison.")
+        return
+
+    left, right = st.columns(2)
+    left.plotly_chart(dep_fig, width="stretch")
+    right.plotly_chart(arr_fig, width="stretch")
+    st.caption(
+        f"Derived from {meta['records']:,} flights across {meta['days']} observed days."
+    )
 
 
-def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multiplier: int = 300) -> go.Figure:
+def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multiplier: int = 450) -> go.Figure:
     """Build a geospatial view comparing weather vs non-weather delays."""
 
     df = df.copy()
@@ -73,6 +85,15 @@ def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multipl
 
     fig = go.Figure()
 
+    def _get_theme_color(key: str, fallback: str) -> str:
+        try:
+            return st.get_option(key) or fallback
+        except RuntimeError:
+            return fallback
+
+    bg_color = _get_theme_color("theme.backgroundColor", "#0e1117")
+    plot_color = _get_theme_color("theme.secondaryBackgroundColor", "#1c1f24")
+
     fig.add_trace(
         go.Scattergeo(
             lon=w_lon,
@@ -82,11 +103,11 @@ def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multipl
             name="Weather Delays",
             marker=dict(
                 size=w_size_tot,
-                color="firebrick",
-                opacity=0.6,
+                color="#F4A261",
+                opacity=0.55,
                 sizemode="area",
-                line_width=0.5,
-                line_color="black",
+                line_width=0.4,
+                line_color="#6D6875",
             ),
             customdata=w_custom,
             hovertemplate="<b>%{text}</b><br>Total: %{customdata[0]:,.0f}m\n<br>Avg: %{customdata[1]:.1f}m\n<br>Med: %{customdata[2]:.1f}m<extra></extra>",
@@ -102,11 +123,11 @@ def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multipl
             name="Non-Weather Delays",
             marker=dict(
                 size=o_size_tot,
-                color="royalblue",
-                opacity=0.6,
+                color="#87A8A4",
+                opacity=0.55,
                 sizemode="area",
-                line_width=0.5,
-                line_color="black",
+                line_width=0.4,
+                line_color="#6D6875",
             ),
             customdata=o_custom,
             hovertemplate="<b>%{text}</b><br>Total: %{customdata[0]:,.0f}m\n<br>Avg: %{customdata[1]:.1f}m\n<br>Med: %{customdata[2]:.1f}m<extra></extra>",
@@ -121,8 +142,11 @@ def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multipl
             projection_type="albers usa",
             showland=True,
             landcolor="rgb(230, 230, 230)",
+            bgcolor=plot_color,
         ),
         margin=dict(t=30, l=0, r=0, b=0),
+        paper_bgcolor=bg_color,
+        plot_bgcolor=plot_color,
         updatemenus=[
             dict(
                 type="buttons",
@@ -132,6 +156,7 @@ def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multipl
                 xanchor="left",
                 yanchor="top",
                 bgcolor="rgba(255, 255, 255, 0.9)",
+                font=dict(color="black"),
                 buttons=[
                     dict(
                         label="Weather Only",
@@ -156,16 +181,88 @@ def create_delay_map(df: pd.DataFrame, airports_us: pd.DataFrame, marker_multipl
                 yanchor="bottom",
                 bgcolor="rgba(255, 255, 255, 0.9)",
                 active=2,
+                font=dict(color="black"),
                 buttons=[
-                    dict(label="Median", method="restyle", args=[
-                         ["marker.size"], [[w_size_med, o_size_med]]]),
-                    dict(label="Average", method="restyle", args=[
-                         ["marker.size"], [[w_size_avg, o_size_avg]]]),
-                    dict(label="Total", method="restyle", args=[
-                         ["marker.size"], [[w_size_tot, o_size_tot]]]),
+                    dict(
+                        label="Median",
+                        method="restyle",
+                        args=[{"marker.size": [w_size_med, o_size_med]}, [0, 1]],
+                    ),
+                    dict(
+                        label="Average",
+                        method="restyle",
+                        args=[{"marker.size": [w_size_avg, o_size_avg]}, [0, 1]],
+                    ),
+                    dict(
+                        label="Total",
+                        method="restyle",
+                        args=[{"marker.size": [w_size_tot, o_size_tot]}, [0, 1]],
+                    ),
                 ],
             ),
         ],
     )
 
     return fig
+
+
+def create_delay_period_comparison(
+    df: pd.DataFrame,
+    periods: Sequence[str] = ("2018-08", "2020-01"),
+) -> Tuple[go.Figure | None, go.Figure | None, dict]:
+    """Return line charts comparing daily departure/arrival delays for given months."""
+
+    if df.empty:
+        return None, None, {"records": 0, "days": 0}
+
+    work_df = df.copy()
+    if not pd.api.types.is_datetime64_any_dtype(work_df["FL_DATE"]):
+        work_df["FL_DATE"] = pd.to_datetime(work_df["FL_DATE"])
+
+    work_df["Period"] = work_df["FL_DATE"].dt.to_period("M").astype(str)
+    work_df["day_of_month"] = work_df["FL_DATE"].dt.day
+    filtered = work_df[work_df["Period"].isin(periods)]
+    if filtered.empty:
+        return None, None, {"records": 0, "days": 0}
+
+    daily = (
+        filtered.groupby(["Period", "day_of_month"], dropna=False)
+        .aggregate(
+            DEP_DELAY=("DEP_DELAY", "mean"),
+            ARR_DELAY=("ARR_DELAY", "mean"),
+        )
+        .reset_index()
+    )
+
+    color_map = {periods[0]: "skyblue", periods[-1]: "salmon"}
+
+    dep_fig = px.line(
+        daily,
+        x="day_of_month",
+        y="DEP_DELAY",
+        color="Period",
+        color_discrete_map=color_map,
+        title="Daily Average Departure Delay",
+        labels={"day_of_month": "Day of Month",
+                "DEP_DELAY": "Avg Departure Delay (min)"},
+    )
+    dep_fig.update_layout(xaxis=dict(
+        tickmode="linear", dtick=1, range=[0.5, 31.5]))
+
+    arr_fig = px.line(
+        daily,
+        x="day_of_month",
+        y="ARR_DELAY",
+        color="Period",
+        color_discrete_map=color_map,
+        title="Daily Average Arrival Delay",
+        labels={"day_of_month": "Day of Month",
+                "ARR_DELAY": "Avg Arrival Delay (min)"},
+    )
+    arr_fig.update_layout(xaxis=dict(
+        tickmode="linear", dtick=1, range=[0.5, 31.5]))
+
+    return dep_fig, arr_fig, {
+        "records": len(filtered),
+        "days": daily["day_of_month"].nunique(),
+    }

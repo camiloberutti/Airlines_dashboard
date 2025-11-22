@@ -1,0 +1,22 @@
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+
+# Streamlit cache
+.streamlit/
+
+# Data and temporary assets
+Airline_dataset.csv
+airports_filtered.csv
+
+# Ignore notebook experiments and colab artifacts
+*.ipynb
+Jose Collab/
+
+# Drop entire Basura folder
+Basura/

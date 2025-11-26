@@ -309,7 +309,8 @@ def _render_airline_delay_range(df: pd.DataFrame) -> None:
                 name=row["Airline_Name"],
                 line=dict(width=2),
                 marker=dict(size=8, symbol="circle"),
-                hovertemplate="<b>Airline</b>: %{y}<br><b>Min Delay</b>: %{x[0]:.1f} min<br><b>Max Delay</b>: %{x[1]:.1f} min<extra></extra>",
+                hovertemplate="<b>%{customdata}</b><br>Min Delay: %{x[0]:.1f} min<br>Max Delay: %{x[1]:.1f} min<extra></extra>",
+                customdata=[row["Airline_Name"], row["Airline_Name"]],
             )
         )
 

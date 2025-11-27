@@ -47,12 +47,14 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
 
     st.caption("Metrics reflect the currently loaded dataset slice.")
 
-    # --- Distance Traveled Visualizations ---
-    import plotly.express as px
-    import numpy as np
 
-    # Only run if required columns for merge are present
-    if all(col in df.columns for col in ["ORIGIN_AIRPORT", "DEST_AIRPORT", "Airline_Name"]) and not airports_us.empty:
+<< << << < HEAD
+ # --- Distance Traveled Visualizations ---
+ import plotly.express as px
+  import numpy as np
+
+   # Only run if required columns for merge are present
+   if all(col in df.columns for col in ["ORIGIN_AIRPORT", "DEST_AIRPORT", "Airline_Name"]) and not airports_us.empty:
         # Merge airport coordinates for origin
         origin_cols = ["IATA", "Latitude", "Longitude"]
         airports_origin = airports_us[origin_cols].rename(columns={
@@ -78,7 +80,8 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
             lon2_rad = np.radians(lon2)
             dlat = lat2_rad - lat1_rad
             dlon = lon2_rad - lon1_rad
-            a = np.sin(dlat / 2) ** 2 + np.cos(lat1_rad) * np.cos(lat2_rad) * np.sin(dlon / 2) ** 2
+            a = np.sin(dlat / 2) ** 2 + np.cos(lat1_rad) * \
+                np.cos(lat2_rad) * np.sin(dlon / 2) ** 2
             c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
             return R * c
 
@@ -88,20 +91,26 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
             row["Destination_Latitude"], row["Destination_Longitude"]), axis=1)
 
         # Pie chart: Top 10 airlines by total distance traveled
-        airline_distances = dfnew.groupby('Airline_Name')['DISTANCE_TRAVELED'].sum().reset_index()
-        airline_distances = airline_distances.sort_values(by='DISTANCE_TRAVELED', ascending=False)
+        airline_distances = dfnew.groupby('Airline_Name')[
+            'DISTANCE_TRAVELED'].sum().reset_index()
+        airline_distances = airline_distances.sort_values(
+            by='DISTANCE_TRAVELED', ascending=False)
         top_10_airlines = airline_distances.head(10)
-        others_distance = airline_distances.iloc[10:]['DISTANCE_TRAVELED'].sum()
-        others_row = pd.DataFrame([{'Airline_Name': 'Others', 'DISTANCE_TRAVELED': others_distance}])
+        others_distance = airline_distances.iloc[10:]['DISTANCE_TRAVELED'].sum(
+        )
+        others_row = pd.DataFrame(
+            [{'Airline_Name': 'Others', 'DISTANCE_TRAVELED': others_distance}])
         pie_data_airlines = pd.concat([top_10_airlines, others_row])
 
-        pie_colors = [PRIMARY_COLOR, ACCENT_GREEN, ACCENT_ORANGE] + px.colors.qualitative.Plotly * 3
+        pie_colors = [PRIMARY_COLOR, ACCENT_GREEN,
+                      ACCENT_ORANGE] + px.colors.qualitative.Plotly * 3
         fig_pie = px.pie(
             pie_data_airlines,
             values='DISTANCE_TRAVELED',
             names='Airline_Name',
             title='Distribution of Distance Traveled by Airline (Top 10 + Others)',
-            labels={'Airline_Name': 'Airline Name', 'DISTANCE_TRAVELED': 'Total Distance Traveled (km)'},
+            labels={'Airline_Name': 'Airline Name',
+                    'DISTANCE_TRAVELED': 'Total Distance Traveled (km)'},
             color_discrete_sequence=pie_colors
         )
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
@@ -113,7 +122,8 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
             x='Airline_Name',
             y='DISTANCE_TRAVELED',
             title='Total Distance Traveled by Airline',
-            labels={'Airline_Name': 'Airline Name', 'DISTANCE_TRAVELED': 'Total Distance Traveled (km)'},
+            labels={'Airline_Name': 'Airline Name',
+                    'DISTANCE_TRAVELED': 'Total Distance Traveled (km)'},
             markers=True,
             color_discrete_sequence=[PRIMARY_COLOR]
         )
@@ -121,6 +131,9 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
         st.plotly_chart(fig_line, use_container_width=True)
     else:
         st.info("Distance traveled visualizations are unavailable: required columns are missing in the dataset or airports reference.")
+
+== == == =
+>>>>>> > 2d87f92f8ade310b0b4f0dbd74013cdbb40b6457
 
 
 def _build_performance_waterfall_data(df: pd.DataFrame):

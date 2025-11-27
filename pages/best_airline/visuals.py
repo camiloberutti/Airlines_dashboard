@@ -1,13 +1,17 @@
 """Best Airline Suggester visual components."""
 
 from __future__ import annotations
+import plotly.graph_objects as go
 
 from typing import Tuple
 
 import pandas as pd
 import streamlit as st
 
-import plotly.graph_objects as go
+<< << << < HEAD
+
+== == == =
+>>>>>> > 2d87f92f8ade310b0b4f0dbd74013cdbb40b6457
 
 
 def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
@@ -18,8 +22,10 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
         st.info("No flight records available. Load data to unlock suggestions.")
         return
 
-    # Build airport lookup by IATA to display full names
-    airports_lookup = {}
+
+<< << << < HEAD
+   # Build airport lookup by IATA to display full names
+   airports_lookup = {}
     if airports_us is not None and not airports_us.empty:
         for _, r in airports_us.iterrows():
             iata = r.get("IATA")
@@ -33,14 +39,17 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
             }
 
     # State selector to filter origin airports
-    states = [s for s in sorted({v.get("state") for v in airports_lookup.values() if v.get("state")})]
+    states = [s for s in sorted(
+        {v.get("state") for v in airports_lookup.values() if v.get("state")})]
     states_options = ["All states"] + states
-    state_choice = st.selectbox("Filter by state (origin)", states_options, index=0, key="best_airline_state")
+    state_choice = st.selectbox(
+        "Filter by state (origin)", states_options, index=0, key="best_airline_state")
 
     # Build list of origins (IATA) present in dataset, optionally filter by state
     origin_iatas = sorted(df["ORIGIN_AIRPORT"].dropna().unique())
     if state_choice != "All states":
-        origin_iatas = [i for i in origin_iatas if i in airports_lookup and airports_lookup[i]["state"] == state_choice]
+        origin_iatas = [
+            i for i in origin_iatas if i in airports_lookup and airports_lookup[i]["state"] == state_choice]
 
     # Map to readable labels: "IATA — Airport Name (City)"
     label_by_iata = {}
@@ -58,11 +67,13 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
         st.warning("No airports available for the selected state.")
         return
 
-    origin_label_choice = st.selectbox("Origin airport", origin_labels, index=0, key="best_airline_origin")
+    origin_label_choice = st.selectbox(
+        "Origin airport", origin_labels, index=0, key="best_airline_origin")
     origin_choice = label_by_iata[origin_label_choice]
-    
+
     # Available destinations from the selected IATA code
-    dest_iatas = sorted(df.loc[df["ORIGIN_AIRPORT"] == origin_choice, "DEST_AIRPORT"].dropna().unique())
+    dest_iatas = sorted(df.loc[df["ORIGIN_AIRPORT"] ==
+                        origin_choice, "DEST_AIRPORT"].dropna().unique())
     # Map destinations to readable labels
     dest_label_by_iata = {}
     dest_labels = []
@@ -85,8 +96,32 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
         key="best_airline_destination",
     )
     destination_choice = dest_label_by_iata[destination_label_choice]
+== == == =
+   origins = sorted(df["ORIGIN_AIRPORT"].dropna().unique())
+    origin_choice = st.selectbox(
+        "Origin airport",
+        origins,
+        index=0,
+        key="best_airline_origin",
+    )
+    destinations = sorted(
+        df.loc[df["ORIGIN_AIRPORT"] == origin_choice,
+               "DEST_AIRPORT"].dropna().unique()
+    )
+    if not destinations:
+        st.warning(
+            "This origin currently has no destination records in the dataset.")
+        return
 
-    recommendations, sample_size, weeks_observed = _get_route_recommendations(
+    destination_choice = st.selectbox(
+        "Destination airport",
+        destinations,
+        index=0,
+        key="best_airline_destination",
+    )
+>>>>>> > 2d87f92f8ade310b0b4f0dbd74013cdbb40b6457
+
+   recommendations, sample_size, weeks_observed = _get_route_recommendations(
         df, origin_choice, destination_choice
     )
 
@@ -120,8 +155,9 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
         "Avg delays below zero mean the airline typically arrives ahead of schedule. Flights/week reflects only the weeks present in the dataset."
     )
 
-    # Summary chart based on the recommendations table
-    try:
+<< << << < HEAD
+   # Summary chart based on the recommendations table
+   try:
         # Bar: Flights / Week, Line: Avg Arrival Delay (min) on secondary axis
         fig = go.Figure()
         fig.add_trace(go.Bar(
@@ -144,8 +180,10 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
             title="Summary: flights/week vs average delay",
             xaxis=dict(title="Airline"),
             yaxis=dict(title="Flights / Week", side="left"),
-            yaxis2=dict(title="Avg Arrival Delay (min)", overlaying="y", side="right"),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            yaxis2=dict(title="Avg Arrival Delay (min)",
+                        overlaying="y", side="right"),
+            legend=dict(orientation="h", yanchor="bottom",
+                        y=1.02, xanchor="right", x=1),
             margin=dict(t=60, b=20),
             height=380,
         )
@@ -154,6 +192,9 @@ def render_visuals(df: pd.DataFrame, airports_us: pd.DataFrame) -> None:
     except Exception:
         # If plotly is not available for some reason, do not break the page
         st.info("Install `plotly` to view the chart (pip install plotly).")
+
+== =====
+>>>>>> > 2d87f92f8ade310b0b4f0dbd74013cdbb40b6457
 
 
 def _get_route_recommendations(

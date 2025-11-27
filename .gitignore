@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -61,3 +62,28 @@ coverage.xml
 .DS_Store
 Thumbs.db
 desktop.ini
+=======
+# Python environment
+.venv/
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+
+# Streamlit cache
+.streamlit/
+
+# Data and temporary assets
+Airline_dataset.csv
+airports_filtered.csv
+
+# Ignore notebook experiments and colab artifacts
+*.ipynb
+Jose Collab
+Jose Collab/
+
+# Drop entire Basura folder
+Basura/
+>>>>>>> 2d87f92f8ade310b0b4f0dbd74013cdbb40b6457
